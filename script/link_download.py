@@ -19,8 +19,8 @@ def download_img(INIT_QUE,DOWNLOAD_QUE,lock):
 
     while True:
         cur_img = INIT_QUE.get()
-        print(cur_img.status)
         if not cur_img:
+            DOWNLOAD_QUE.put(None)
             break
         if cur_img.status != PicInfo.INIT:
             logging.warn("img {} NOT INIT".format(cur_img.id))
@@ -46,7 +46,8 @@ def download_img(INIT_QUE,DOWNLOAD_QUE,lock):
                 else:
                     cur_img.status = PicInfo.DOWNLOAD
                     if DOWNLOAD_QUE.qsize() > max_queue_len:
-                        DOWNLOAD_QUE.put(cur_img)
+                        DOWNLOAD_QUE.join()
+                    DOWNLOAD_QUE.put(cur_img)
         except Exception as e:
             print(e)
             cur_img.status = PicInfo.ERROR

@@ -2,21 +2,26 @@ from  multiprocessing import JoinableQueue,Process,Lock,Manager
 from pic_info import PicInfo
 from link_craw import get_link
 from link_download import download_img
+from crop_img import crop_img
 import os
 import sqlite3
 import time
 import logging
 
+#设置日志级别
+logging.basicConfig(level=logging.DEBUG)
 main_word=["pretty face","lovely girl"]
 countrys = ["india","japan"]
 
-main_word=["pretty face"]
-countrys = ["india"]
-
-
 max_number = 20
-max_process_num = 1
+max_process_num = len(main_word) * len(countrys)
 
+#控制是否执行每个步骤
+IF_INIT = True
+IF_CRAW = False
+IF_DOWNLOAD = False
+IF_CROP = True
+IF_UPLOAD = True
 
 def get_id():
     conn = sqlite3.connect("picinfo.db") 
@@ -90,7 +95,6 @@ def release_que(queue_list):
                 break
             each.task_done()
      
-
 def main():
     #conn = sqlite3.connect("picinfo.db",check_same_thread = False) 
     INIT_QUE = JoinableQueue()
@@ -111,26 +115,37 @@ def main():
     id_m = manager.list([start_id])
     #2. 爬取链接 
     get_link_task = []
-    for q1 in main_word:
-        for q2 in countrys:
-            mkdirpath(os.path.join("imgs",q2,q1))
-            p = Process(target=get_link, args=(q1,q2,max_number,id_m,INIT_QUE,lock))
-            get_link_task.append(p)
+    if IF_INIT:
+        for q1 in main_word:
+            for q2 in countrys:
+                mkdirpath(os.path.join("imgs",q2,q1))
+                p = Process(target=get_link, args=(q1,q2,max_number,id_m,INIT_QUE,lock))
+                get_link_task.append(p)
+
     #3. 下载图片
     download_link_task = []
-    for _ in range(max_process_num):
-        p = Process(target=download_img,args=(INIT_QUE,DOWNLOAD_QUE,lock))
-        #p.start()
-        download_link_task.append(p)
+    if IF_CRAW:
+        for _ in range(max_process_num):
+            p = Process(target=download_img,args=(INIT_QUE,DOWNLOAD_QUE,lock))
+            #p.start()
+            download_link_task.append(p)
+    
+    #4. 裁减人脸
     print("*-"*10)
+    crop_task = []
+    if IF_CROP:
+         for _ in range(max_process_num):
+            p = Process(target=crop_img,args=(DOWNLOAD_QUE,CROP_QUE,lock))
+            #p.start()
+            crop_task.append(p)
+
     print(len(get_link_task))
     print("main_pid",os.getpid()," ",os.getppid())
-    for each in get_link_task + download_link_task:
+    for each in get_link_task + download_link_task + crop_task:
         print(each,"start")
         each.start()
-    for each in get_link_task + download_link_task:
+    for each in get_link_task + download_link_task + crop_task:
         each.join()
-#    print("???????????????????????????????????????"*5)
     print(DOWNLOAD_QUE.qsize())
     release_que([INIT_QUE,DOWNLOAD_QUE,CROP_QUE,UPLOAD_QUE])
     print("job done")
