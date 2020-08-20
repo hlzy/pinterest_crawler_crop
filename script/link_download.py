@@ -12,7 +12,7 @@ URL_HEADERS = {
         'Content-Type': 'application/json;charset=utf-8'
 }
 
-max_queue_len = 150
+max_queue_len = 100
 def download_img(INIT_QUE,DOWNLOAD_QUE,lock):
     conn = sqlite3.connect("picinfo.db") 
     #cursor = conn.cursor()

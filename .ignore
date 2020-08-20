@@ -2,3 +2,5 @@
 *.pyc
 imgs
 *.db
+crop_imgs
+imgs

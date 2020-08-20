@@ -16,3 +16,19 @@ class PicInfo:
         self.status = config.get("status",PicInfo.INIT)
         self.width = config.get("width",0)
         self.height = config.get("height",0)
+
+    def __str__(self):
+        return ("""
+        pic:{}
+        url:{}
+        query:{}
+        country:{}
+        status:{}
+        width:{}
+        height:{}""".format(self.id,
+            self.url,
+            self.query,
+            self.country,
+            self.status,
+            self.width,
+            self.height))

@@ -7,7 +7,7 @@ from pic_info import PicInfo
 import sqlite3
 from update_sql import insert_sql,update_sql
 
-max_queue_len = 150
+max_queue_len = 100
 def get_link(word1,word2,max_num,id_m,INIT_QUE,lock):
     conn = sqlite3.connect("picinfo.db") 
     #cursor = conn.cursor()
@@ -39,6 +39,10 @@ def get_link(word1,word2,max_num,id_m,INIT_QUE,lock):
     bookmark= info['resource']['options']['bookmarks'][0]
     img_result = 0
     for row in info['resource_response']['data']['results']:
+        img_result += 1
+        if img_result > max_num:
+            break
+
         lock["id"].acquire()
         id = id_m[0]
         id += 1
@@ -65,6 +69,8 @@ def get_link(word1,word2,max_num,id_m,INIT_QUE,lock):
         bookmark= info['resource']['options']['bookmarks'][0]
         for row in info['resource_response']['data']['results']:
             img_result += 1
+            if img_result > max_num:
+                break
             lock["id"].acquire()
             id = id_m[0]
             id += 1
@@ -76,7 +82,7 @@ def get_link(word1,word2,max_num,id_m,INIT_QUE,lock):
             if INIT_QUE.qsize() > max_queue_len:
                 INIT_QUE.join()
             INIT_QUE.put(cur_img)
-            print(img_result, url)
+            print(img_result,max_num, url)
 
     if INIT_QUE.qsize() > max_queue_len:
         INIT_QUE.join()

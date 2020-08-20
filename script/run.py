@@ -9,19 +9,23 @@ import time
 import logging
 
 #设置日志级别
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 main_word=["pretty face","lovely girl"]
 countrys = ["india","japan"]
 
-max_number = 20
+max_number = 100
 max_process_num = len(main_word) * len(countrys)
 
 #控制是否执行每个步骤
 IF_INIT = True
-IF_CRAW = False
-IF_DOWNLOAD = False
+#IF_INIT = False
+IF_CRAW = True
+#IF_CRAW = False
+IF_DOWNLOAD = True
+#IF_DOWNLOAD = False
 IF_CROP = True
-IF_UPLOAD = True
+#IF_CROP = False
+IF_UPLOAD = False
 
 def get_id():
     conn = sqlite3.connect("picinfo.db") 
@@ -55,14 +59,21 @@ def init_que(INIT_QUE,DOWNLOAD_QUE,CROP_QUE,UPLOAD_QUE):
     conn.commit()
 
     sql = """
-    select id,url,status from pic_info where status <> {} and status <> {}
+    select id,url,country,query,status,height,width from pic_info where status <> {} and status <> {}
     """.format(PicInfo.UPLOAD,PicInfo.ERROR)
     cursor.execute(sql)
     while True:
         db_img_info = cursor.fetchone()
         if not db_img_info:
             break
-        cur_img = PicInfo(id=db_img_info[0],url=db_img_info[1],status=db_img_info[2])
+        cur_img = PicInfo(id=db_img_info[0]
+                ,url=db_img_info[1]
+                ,country=db_img_info[2]
+                ,query=db_img_info[3]
+                ,status=db_img_info[4]
+                ,height=db_img_info[5]
+                ,width=db_img_info[6]
+                )
         if cur_img.status == PicInfo.INIT:
             INIT_QUE.put(cur_img)
         elif cur_img.status == PicInfo.DOWNLOAD:
@@ -89,7 +100,7 @@ def release_que(queue_list):
     for each in queue_list:
         while not each.empty():
             index += 1
-            logging.debug("relase",index)
+            logging.debug("relase %d"% index)
             a = each.get()
             if not a:
                 break
@@ -119,8 +130,12 @@ def main():
         for q1 in main_word:
             for q2 in countrys:
                 mkdirpath(os.path.join("imgs",q2,q1))
+                mkdirpath(os.path.join("crop_imgs",q2,q1))
                 p = Process(target=get_link, args=(q1,q2,max_number,id_m,INIT_QUE,lock))
                 get_link_task.append(p)
+    else:
+        for _ in range(max_process_num):
+            INIT_QUE.put(None)
 
     #3. 下载图片
     download_link_task = []
@@ -129,6 +144,10 @@ def main():
             p = Process(target=download_img,args=(INIT_QUE,DOWNLOAD_QUE,lock))
             #p.start()
             download_link_task.append(p)
+    else:
+        for _ in range(max_process_num):
+            DOWNLOAD_QUE.put(None)
+
     
     #4. 裁减人脸
     print("*-"*10)
@@ -138,6 +157,9 @@ def main():
             p = Process(target=crop_img,args=(DOWNLOAD_QUE,CROP_QUE,lock))
             #p.start()
             crop_task.append(p)
+    else:
+        for _ in range(max_process_num):
+            CROP_QUE.put(None)
 
     print(len(get_link_task))
     print("main_pid",os.getpid()," ",os.getppid())
