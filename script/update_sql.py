@@ -1,5 +1,5 @@
 import sqlite3
-
+import logging
 
 #        self.url= config.get("url")
 #        self.id = config.get("id")
@@ -9,30 +9,32 @@ import sqlite3
 #        self.width = config.get("width","-")
 #        self.height = config.get("height","-")
 
-def insert_sql(cur_img,conn,cursor,sql_lock):
+def insert_sql(cur_img,conn,sql_lock):
     sql="""
-    insert into pic_info(id,url,country,status) 
-    values("{}","{}","{}","{}")
+    insert into pic_info(id,url,country,query,status) 
+    values("{}","{}","{}","{}","{}")
     """.format(cur_img.id,
             cur_img.url,
             cur_img.country,
+            cur_img.query,
             cur_img.status)
     sql_lock.acquire()
+    cursor = conn.cursor()
     cursor.execute(sql)
     conn.commit()
+    cursor.close()
     sql_lock.release()
 
-def update_sql(cur_img,conn,cursor,sql_lock):
+def update_sql(cur_img,conn,sql_lock):
     sql="""
     update pic_info set 
-    url = {url},
-    country = {country},
-    query = {query},
+    url = "{url}",
+    country = "{country}",
+    query = "{query}",
     status = {status},
     width = {width},
     height = {height}
     where id = {id}
-    )
     """.format(id=cur_img.id,
             url=cur_img.url,
             country=cur_img.country,
@@ -41,6 +43,9 @@ def update_sql(cur_img,conn,cursor,sql_lock):
             width=cur_img.width,
             height=cur_img.height)
     sql_lock.acquire()
+    cursor = conn.cursor()
+    logging.debug(sql)
     cursor.execute(sql)
     conn.commit()
+    cursor.close()
     sql_lock.release()

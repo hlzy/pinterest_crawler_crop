@@ -7,16 +7,19 @@ from pic_info import PicInfo
 import logging
 import time
 import sqlite3
+from update_sql import update_sql
 URL_HEADERS = { 
         'Content-Type': 'application/json;charset=utf-8'
 }
 
+max_queue_len = 150
 def download_img(INIT_QUE,DOWNLOAD_QUE,lock):
     conn = sqlite3.connect("picinfo.db") 
-    cursor = conn.cursor()
+    #cursor = conn.cursor()
 
     while True:
         cur_img = INIT_QUE.get()
+        print(cur_img.status)
         if not cur_img:
             break
         if cur_img.status != PicInfo.INIT:
@@ -24,7 +27,7 @@ def download_img(INIT_QUE,DOWNLOAD_QUE,lock):
             INIT_QUE.task_done()
             continue
         try:
-            download_path = os.path.join("imgs",cur_img.countrys,cur_img.query,"%s.jpg" % cur_img.id)
+            download_path = os.path.join("imgs",cur_img.country,cur_img.query,"%s.jpg" % cur_img.id)
             cover_request = urllib.request.Request(cur_img.url, method="GET", headers=URL_HEADERS)
             response = urllib.request.urlopen(cover_request)
             resp_header = response.info()
@@ -33,19 +36,23 @@ def download_img(INIT_QUE,DOWNLOAD_QUE,lock):
             if image_type[0] == "image" and len(image_type) == 2:
                 type = image_type[1]
                 #cover_file_name = '{}{}{}{}{}'.format(local_dir,os.sep, resid, ".", type)
-                urllib.request.urlretrieve(url_path, download_path)
-                fsize = os.path.getsize(cover_file_name)
+                urllib.request.urlretrieve(cur_img.url, download_path)
+                fsize = os.path.getsize(download_path)
+                print("download",cur_img.url,"->",download_path)
                 if fsize < 100:
                     logging.warn("the file {} size is less than 100".format(cur_img.id))
+                    print("ERROR",cur_img.status)
                     cur_img.status = PicInfo.ERROR
                 else:
-                    cur_img.starts = PicInfo.DOWNLOAD
-                    DOWNLOAD_QUE.put(cur_img)
-        except:
+                    cur_img.status = PicInfo.DOWNLOAD
+                    if DOWNLOAD_QUE.qsize() > max_queue_len:
+                        DOWNLOAD_QUE.put(cur_img)
+        except Exception as e:
+            print(e)
             cur_img.status = PicInfo.ERROR
+        update_sql(cur_img,conn,lock["sql"])
         INIT_QUE.task_done()
-        update_sql(cur_img,conn,cursor,lock["sql"])
 
-    cursor.close()
+    #cursor.close()
     conn.close()
 

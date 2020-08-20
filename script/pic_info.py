@@ -14,5 +14,5 @@ class PicInfo:
         self.query = config.get("query","unkown")
         self.country = config.get("country","unkown")
         self.status = config.get("status",PicInfo.INIT)
-        self.width = config.get("width","-")
-        self.height = config.get("height","-")
+        self.width = config.get("width",0)
+        self.height = config.get("height",0)
