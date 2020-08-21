@@ -6,7 +6,7 @@ import os
 from pic_info import PicInfo
 import sqlite3
 from update_sql import insert_sql,update_sql
-
+import logging
 max_queue_len = 100
 def get_link(word1,word2,max_num,id_m,INIT_QUE,lock):
     conn = sqlite3.connect("picinfo.db") 
@@ -28,12 +28,13 @@ def get_link(word1,word2,max_num,id_m,INIT_QUE,lock):
     }
     query = {
         "source_url": """/search/pins/?q={}&rs=typed""".format(keyword)
-        ,"data": """{"options":{"isPrefetch":false,"query":"beautiful girl","scope":"pins"},"context":{}}"""
+        ,"data": """{"options":{"isPrefetch":false,"query":"%s","scope":"pins"},"context":{}}""" % (keyword)
         ,"_": """{}""".format(int(time.time() * 1000))
     }
     query = "&".join(["%s=%s" % (k,urllib.request.quote(v,safe="")) for k,v in query.items()])
     root_url = "https://www.pinterest.com/resource/BaseSearchResource/get/?" 
     url = root_url + query
+    logging.debug(url)
     ret = requests.get(url,headers=headers)
     info = ret.json()
     bookmark= info['resource']['options']['bookmarks'][0]
@@ -59,7 +60,7 @@ def get_link(word1,word2,max_num,id_m,INIT_QUE,lock):
         loop += 1
         query = {
             "source_url": """/search/pins/?q={}&rs=typed""".format(keyword)
-            ,"data": """{"options":{"page_size":25,"query":"beautiful girl","scope":"pins","bookmarks":["%s"],"field_set_key":"unauth_react"},"context":{}}""" % bookmark
+            ,"data": """{"options":{"page_size":25,"query":"%s","scope":"pins","bookmarks":["%s"],"field_set_key":"unauth_react"},"context":{}}""" % (keyword, bookmark)
             ,"_": """{}""".format(int(time.time() * 1000))
             }
         query = "&".join(["%s=%s" % (k,urllib.request.quote(v,safe="")) for k,v in query.items()])
@@ -82,7 +83,8 @@ def get_link(word1,word2,max_num,id_m,INIT_QUE,lock):
             if INIT_QUE.qsize() > max_queue_len:
                 INIT_QUE.join()
             INIT_QUE.put(cur_img)
-            print(img_result,max_num, url)
+            logging.info("INIT_QUE put size:%d" % INIT_QUE.qsize())
+            logging.debug("%s %s %s"% (img_result,max_num, url))
 
     if INIT_QUE.qsize() > max_queue_len:
         INIT_QUE.join()

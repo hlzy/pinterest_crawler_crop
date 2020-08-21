@@ -1,8 +1,7 @@
 import os
 import sys 
 import logging
-import urllib.request
-import urllib.parse
+import urllib.request import urllib.parse
 from pic_info import PicInfo
 import logging
 import time
@@ -39,6 +38,7 @@ def crop_img(DOWNLOAD_QUE,CROP_QUE,lock,face_ratio=0.5):
     conn = sqlite3.connect("picinfo.db")
     while True:
         cur_img = DOWNLOAD_QUE.get()
+        logging.info("DOWNLOAD_QUE get size:%d" % DOWNLOAD_QUE.qsize())
         #print(cur_img)
         if not cur_img:
             CROP_QUE.put(None)
@@ -56,7 +56,7 @@ def crop_img(DOWNLOAD_QUE,CROP_QUE,lock,face_ratio=0.5):
             update_sql(cur_img,conn,lock["sql"])
             DOWNLOAD_QUE.task_done()
             continue
-        logging.info("img {} start crop".format(cur_img.id))
+        #logging.info("img {} start crop".format(cur_img.id))
         #ret = crop_face(cur_img)
         save_path = os.path.join("crop_imgs",cur_img.country,cur_img.query,str(cur_img.id))
         ret = crop_face(download_path,save_path)
@@ -65,7 +65,9 @@ def crop_img(DOWNLOAD_QUE,CROP_QUE,lock,face_ratio=0.5):
             cur_img.status = PicInfo.CROP
             if CROP_QUE.qsize() > max_queue_len:
                 CROP_QUE.join()
-            CROP_QUE.put(cur_img)
+            logging.info("CROP_QUE put size:%d" % CROP_QUE.qsize())
+            #若把裁减当作最后一步则在此位置就不放入CROP_QUE了
+            #CROP_QUE.put(cur_img)
         else:
             cur_img.status = PicInfo.ERROR
         update_sql(cur_img,conn,lock["sql"])
@@ -88,9 +90,12 @@ def crop_face(download_path,save_path,face_rate=0.7):
     face_confid, face_ratio, box = face_box
     height,width = img.shape[:2]
     crop_height = crop_width = max(box[2],box[3])
+    if crop_height < 50:
+        logging.warn("face too small!")
+        return
     img_ratio_height_width = height / width
-    face_center_x = box[0] + box[3] / 2 
-    face_center_y = box[1] + box[2] / 2 
+    face_center_x = box[0] + box[2] / 2 
+    face_center_y = box[1] + box[3] / 2 
     #print(height,width,box[2]/box[3])
     width_min_distance = min(face_center_x,width - face_center_x)
     height_min_distance = min(face_center_y,height - face_center_y)
@@ -108,3 +113,4 @@ def crop_face(download_path,save_path,face_rate=0.7):
     logging.info("CROP_FINISH save to "+ str(crop_path))
     cv2.imwrite(crop_path,img[int(y): int(y+crop_height) ,int(x): int(x+crop_width)])
     return True
+

@@ -1,2 +1,3 @@
-# pinterest_crawler_crop
-pinterest_crawler_crop
+"""
+python3 script/run.py
+"""

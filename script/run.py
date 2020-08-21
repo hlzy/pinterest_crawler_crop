@@ -10,17 +10,18 @@ import logging
 
 #设置日志级别
 logging.basicConfig(level=logging.INFO)
-main_word=["pretty face","lovely girl"]
-countrys = ["india","japan"]
+main_word=["pretty face"]
+countrys = "Indonesia Egypt Brazil Vietnam Thailand United States Pakistan Bangladesh Ukraine United Kingdom Russian Federation Kazakhstan Canada Malaysia Nepal Turkey Uzbekistan Germany Kyrgyzstan Armenia Jordan Belarus Algeria Morocco Netherlands France Yemen Georgia".split()
 
-max_number = 100
+
+max_number = 30
 max_process_num = len(main_word) * len(countrys)
 
 #控制是否执行每个步骤
 IF_INIT = True
 #IF_INIT = False
+#IF_CRAW = True
 IF_CRAW = True
-#IF_CRAW = False
 IF_DOWNLOAD = True
 #IF_DOWNLOAD = False
 IF_CROP = True
@@ -75,10 +76,13 @@ def init_que(INIT_QUE,DOWNLOAD_QUE,CROP_QUE,UPLOAD_QUE):
                 ,width=db_img_info[6]
                 )
         if cur_img.status == PicInfo.INIT:
+            logging.info("INIT_QUE put size:%d" % INIT_QUE.qsize())
             INIT_QUE.put(cur_img)
         elif cur_img.status == PicInfo.DOWNLOAD:
+            logging.info("DOWNLOAD_QUE put size:%d" % DOWNLOAD_QUE.qsize())
             DOWNLOAD_QUE.put(cur_img)
         elif cur_img.status == PicInfo.CROP:
+            logging.info("CROP_QUE put size:%d" % CROP_QUE.qsize())
             CROP_QUE.put(cur_img)
 
     #这个sleep比较牛逼,防止垃圾回收时还有在执行put的queue 引发Broken pipe
@@ -120,13 +124,14 @@ def main():
         ,"id": Lock()
     }
     #1. 使用mysql初始化各队列之前未完成的任务
-    init_que(INIT_QUE,DOWNLOAD_QUE,CROP_QUE,UPLOAD_QUE)
+    if IF_INIT:
+        init_que(INIT_QUE,DOWNLOAD_QUE,CROP_QUE,UPLOAD_QUE)
     start_id = get_id()
     manager = Manager()
     id_m = manager.list([start_id])
     #2. 爬取链接 
     get_link_task = []
-    if IF_INIT:
+    if IF_CRAW:
         for q1 in main_word:
             for q2 in countrys:
                 mkdirpath(os.path.join("imgs",q2,q1))
@@ -139,7 +144,7 @@ def main():
 
     #3. 下载图片
     download_link_task = []
-    if IF_CRAW:
+    if IF_DOWNLOAD:
         for _ in range(max_process_num):
             p = Process(target=download_img,args=(INIT_QUE,DOWNLOAD_QUE,lock))
             #p.start()

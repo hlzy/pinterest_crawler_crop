@@ -19,8 +19,10 @@ def download_img(INIT_QUE,DOWNLOAD_QUE,lock):
 
     while True:
         cur_img = INIT_QUE.get()
+        logging.info("INIT_QUE get size:%d" % INIT_QUE.qsize())
         if not cur_img:
             DOWNLOAD_QUE.put(None)
+            logging.info("DOWNLOAD_QUE put size:%d None" % INIT_QUE.qsize())
             break
         if cur_img.status != PicInfo.INIT:
             logging.warn("img {} NOT INIT".format(cur_img.id))
@@ -38,18 +40,19 @@ def download_img(INIT_QUE,DOWNLOAD_QUE,lock):
                 #cover_file_name = '{}{}{}{}{}'.format(local_dir,os.sep, resid, ".", type)
                 urllib.request.urlretrieve(cur_img.url, download_path)
                 fsize = os.path.getsize(download_path)
-                print("download",cur_img.url,"->",download_path)
+                logging.debug("download "+ cur_img.url+"->"+download_path)
                 if fsize < 100:
                     logging.warn("the file {} size is less than 100".format(cur_img.id))
-                    print("ERROR",cur_img.status)
+                    logging.error("ERROR",cur_img.status)
                     cur_img.status = PicInfo.ERROR
                 else:
                     cur_img.status = PicInfo.DOWNLOAD
                     if DOWNLOAD_QUE.qsize() > max_queue_len:
                         DOWNLOAD_QUE.join()
                     DOWNLOAD_QUE.put(cur_img)
+                    logging.info("DOWNLOAD_QUE put size:%d" % DOWNLOAD_QUE.qsize())
         except Exception as e:
-            print(e)
+            logging.error(e)
             cur_img.status = PicInfo.ERROR
         update_sql(cur_img,conn,lock["sql"])
         INIT_QUE.task_done()
