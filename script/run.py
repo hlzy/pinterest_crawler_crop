@@ -1,4 +1,4 @@
-from  multiprocessing import JoinableQueue,Process,Lock,Manager
+from  multiprocessing import JoinableQueue,Process,Lock,Manager,Pool
 from pic_info import PicInfo
 from link_craw import get_link
 from link_download import download_img
@@ -9,23 +9,20 @@ import time
 import logging
 
 #设置日志级别
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 main_word=["pretty face"]
-countrys = "Indonesia Egypt Brazil Vietnam Thailand United States Pakistan Bangladesh Ukraine United Kingdom Russian Federation Kazakhstan Canada Malaysia Nepal Turkey Uzbekistan Germany Kyrgyzstan Armenia Jordan Belarus Algeria Morocco Netherlands France Yemen Georgia".split()
+countrys = "Indonesia Egypt Brazil Vietnam Thailand United States Pakistan Bangladesh Ukraine United Kingdom Russian Federation Kazakhstan Canada Malaysia Nepal Turkey Uzbekistan Germany Kyrgyzstan Armenia Jordan Belarus Algeria Morocco Netherlands France Yemen Georgia".split()[:4]
 
 
 max_number = 30
 max_process_num = len(main_word) * len(countrys)
+#max_process_num = 4
 
 #控制是否执行每个步骤
 IF_INIT = True
-#IF_INIT = False
-#IF_CRAW = True
 IF_CRAW = True
 IF_DOWNLOAD = True
-#IF_DOWNLOAD = False
 IF_CROP = True
-#IF_CROP = False
 IF_UPLOAD = False
 
 def get_id():
@@ -131,11 +128,15 @@ def main():
     id_m = manager.list([start_id])
     #2. 爬取链接 
     get_link_task = []
+
+#    pool = Pool(max_process_num)
+
     if IF_CRAW:
         for q1 in main_word:
             for q2 in countrys:
                 mkdirpath(os.path.join("imgs",q2,q1))
                 mkdirpath(os.path.join("crop_imgs",q2,q1))
+#                pool.apply_async(get_link, args=(q1,q2,max_number,id_m,INIT_QUE,lock,))
                 p = Process(target=get_link, args=(q1,q2,max_number,id_m,INIT_QUE,lock))
                 get_link_task.append(p)
     else:
@@ -171,6 +172,9 @@ def main():
     for each in get_link_task + download_link_task + crop_task:
         print(each,"start")
         each.start()
+#    pool.close()
+#    pool.join()
+#    pool.terminate()
     for each in get_link_task + download_link_task + crop_task:
         each.join()
     print(DOWNLOAD_QUE.qsize())

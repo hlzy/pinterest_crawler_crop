@@ -1,7 +1,8 @@
 import os
 import sys 
 import logging
-import urllib.request import urllib.parse
+import urllib.request
+import urllib.parse
 from pic_info import PicInfo
 import logging
 import time
