@@ -9,14 +9,14 @@ import time
 import logging
 
 #设置日志级别
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 main_word=["pretty face"]
-countrys = "Indonesia Egypt Brazil Vietnam Thailand United States Pakistan Bangladesh Ukraine United Kingdom Russian Federation Kazakhstan Canada Malaysia Nepal Turkey Uzbekistan Germany Kyrgyzstan Armenia Jordan Belarus Algeria Morocco Netherlands France Yemen Georgia".split()[:4]
+countrys = "Indonesia Egypt Brazil Vietnam Thailand United States Pakistan Bangladesh Ukraine United Kingdom Russian Federation Kazakhstan Canada Malaysia Nepal Turkey Uzbekistan Germany Kyrgyzstan Armenia Jordan Belarus Algeria Morocco Netherlands France Yemen Georgia".split()
 
 
 max_number = 30
-max_process_num = len(main_word) * len(countrys)
-#max_process_num = 4
+#max_process_num = len(main_word) * len(countrys)
+max_process_num = 4
 
 #控制是否执行每个步骤
 IF_INIT = True
@@ -48,9 +48,9 @@ def init_que(INIT_QUE,DOWNLOAD_QUE,CROP_QUE,UPLOAD_QUE):
         , url varchar(100)
         , country varchar(10)
         , query varchar(10)
-        , status integer
-        , height integer
-        , width integer
+        , status integer 
+        , height integer default 0
+        , width integer default 0
         );
     """
     cursor.execute(sql)
@@ -106,10 +106,16 @@ def release_que(queue_list):
             if not a:
                 break
             each.task_done()
-     
+
+def hello(word1,word2,max_num,id_m,INIT_QUE,lock): #,process_number_dict):
+    print("hello")
+
 def main():
     #conn = sqlite3.connect("picinfo.db",check_same_thread = False) 
-    INIT_QUE = JoinableQueue()
+    #爬取链接这一步若采用线程池则，队列使用Manager.Queue
+    #爬去采用线程池主要是由于，查询关键词较多
+    m = Manager()
+    INIT_QUE = m.Queue()
     DOWNLOAD_QUE = JoinableQueue()
     CROP_QUE = JoinableQueue()
     UPLOAD_QUE = JoinableQueue()
@@ -117,8 +123,8 @@ def main():
     mkdirpath(os.path.join("imgs","unkown","unkown"))
     #cursor = conn.cursor()
     lock = {
-        "sql": Lock()
-        ,"id": Lock()
+        "sql": m.Lock()
+        ,"id": m.Lock()
     }
     #1. 使用mysql初始化各队列之前未完成的任务
     if IF_INIT:
@@ -128,17 +134,22 @@ def main():
     id_m = manager.list([start_id])
     #2. 爬取链接 
     get_link_task = []
-
-#    pool = Pool(max_process_num)
+    
+    process_number_dict = m.dict()
+    process_number_dict["init"] = len(main_word) * len(countrys)
+    process_number_dict["download"] = max_process_num
+    process_number_dict["crop"] = max_process_num
+    pool = Pool(max_process_num)
 
     if IF_CRAW:
         for q1 in main_word:
             for q2 in countrys:
                 mkdirpath(os.path.join("imgs",q2,q1))
                 mkdirpath(os.path.join("crop_imgs",q2,q1))
-#                pool.apply_async(get_link, args=(q1,q2,max_number,id_m,INIT_QUE,lock,))
-                p = Process(target=get_link, args=(q1,q2,max_number,id_m,INIT_QUE,lock))
-                get_link_task.append(p)
+                #pool.apply_async(hello,args=(q1,q2,max_number,id_m,INIT_QUE,lock,))#,process_number_dict,))
+                pool.apply_async(get_link, args=(q1,q2,max_number,id_m,INIT_QUE,lock,process_number_dict,))
+#                p = Process(target=get_link, args=(q1,q2,max_number,id_m,INIT_QUE,lock))
+#                get_link_task.append(p)
     else:
         for _ in range(max_process_num):
             INIT_QUE.put(None)
@@ -147,7 +158,7 @@ def main():
     download_link_task = []
     if IF_DOWNLOAD:
         for _ in range(max_process_num):
-            p = Process(target=download_img,args=(INIT_QUE,DOWNLOAD_QUE,lock))
+            p = Process(target=download_img,args=(INIT_QUE,DOWNLOAD_QUE,lock,process_number_dict))
             #p.start()
             download_link_task.append(p)
     else:
@@ -160,7 +171,7 @@ def main():
     crop_task = []
     if IF_CROP:
          for _ in range(max_process_num):
-            p = Process(target=crop_img,args=(DOWNLOAD_QUE,CROP_QUE,lock))
+            p = Process(target=crop_img,args=(DOWNLOAD_QUE,CROP_QUE,lock,0.5,process_number_dict))
             #p.start()
             crop_task.append(p)
     else:
@@ -172,9 +183,9 @@ def main():
     for each in get_link_task + download_link_task + crop_task:
         print(each,"start")
         each.start()
-#    pool.close()
-#    pool.join()
-#    pool.terminate()
+    pool.close()
+    pool.join()
+    pool.terminate()
     for each in get_link_task + download_link_task + crop_task:
         each.join()
     print(DOWNLOAD_QUE.qsize())

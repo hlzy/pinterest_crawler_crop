@@ -7,8 +7,9 @@ from pic_info import PicInfo
 import sqlite3
 from update_sql import insert_sql,update_sql
 import logging
+
 max_queue_len = 100
-def get_link(word1,word2,max_num,id_m,INIT_QUE,lock):
+def get_link(word1,word2,max_num,id_m,INIT_QUE,lock,process_number_dict):
     conn = sqlite3.connect("picinfo.db") 
     #cursor = conn.cursor()
     keyword = "%s %s" % (word1,word2)
@@ -49,7 +50,8 @@ def get_link(word1,word2,max_num,id_m,INIT_QUE,lock):
         id += 1
         id_m[0] = id
         lock["id"].release()
-        url = row['images']['orig']['url']
+        #url = row['images']['orig']['url']
+        url = row['images']['474x']['url']
         cur_img = PicInfo(id=id,url=url,country=country,query=word1,status=PicInfo.INIT)
         insert_sql(cur_img,conn,lock["sql"])
         if INIT_QUE.qsize() > max_queue_len:
@@ -77,7 +79,7 @@ def get_link(word1,word2,max_num,id_m,INIT_QUE,lock):
             id += 1
             id_m[0] = id
             lock["id"].release()
-            url = row['images']['orig']['url']
+            url = row['images']['474x']['url']
             cur_img = PicInfo(id=id,url=url,country=country,query=word1,status=PicInfo.INIT)
             insert_sql(cur_img,conn,lock["sql"])
             if INIT_QUE.qsize() > max_queue_len:
@@ -88,9 +90,13 @@ def get_link(word1,word2,max_num,id_m,INIT_QUE,lock):
 
     if INIT_QUE.qsize() > max_queue_len:
         INIT_QUE.join()
-    INIT_QUE.put(None)
+#    INIT_QUE.put(None)
 #    cursor.close()
     conn.close()
     #print("sub_pid",os.getpid())
-    print("sub_pid",os.getpid()," ",os.getppid())
+    if process_number_dict["init"] > 1:
+        process_number_dict["init"] -= 1
+    else:
+        INIT_QUE.put(None)
+    print("sub_pid %d",os.getpid()," ",os.getppid())
     print("init job done",word1,word2)

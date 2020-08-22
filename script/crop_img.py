@@ -35,14 +35,18 @@ def check_face_info(img):
         return face_confid, face_ratio, box
     return None
 
-def crop_img(DOWNLOAD_QUE,CROP_QUE,lock,face_ratio=0.5):
+def crop_img(DOWNLOAD_QUE,CROP_QUE,lock,face_ratio,process_number_dict):
     conn = sqlite3.connect("picinfo.db")
     while True:
         cur_img = DOWNLOAD_QUE.get()
         logging.info("DOWNLOAD_QUE get size:%d" % DOWNLOAD_QUE.qsize())
         #print(cur_img)
         if not cur_img:
-            CROP_QUE.put(None)
+            DOWNLOAD_QUE.put(None)
+            if process_number_dict["crop"] > 1:
+                process_number_dict["crop"] -= 1
+            else:
+                DOWNLOAD_QUE.put(None)
             break
         if cur_img.status != PicInfo.DOWNLOAD:
             logging.warn("img {} NOT DOWNLOAD".format(cur_img.id))
@@ -57,19 +61,22 @@ def crop_img(DOWNLOAD_QUE,CROP_QUE,lock,face_ratio=0.5):
             update_sql(cur_img,conn,lock["sql"])
             DOWNLOAD_QUE.task_done()
             continue
-        #logging.info("img {} start crop".format(cur_img.id))
+        logging.info("img {} start crop".format(download_path))
         #ret = crop_face(cur_img)
         save_path = os.path.join("crop_imgs",cur_img.country,cur_img.query,str(cur_img.id))
-        ret = crop_face(download_path,save_path)
-        logging.info("img {} finish crop".format(cur_img.id))
-        if ret:
-            cur_img.status = PicInfo.CROP
-            if CROP_QUE.qsize() > max_queue_len:
-                CROP_QUE.join()
-            logging.info("CROP_QUE put size:%d" % CROP_QUE.qsize())
-            #若把裁减当作最后一步则在此位置就不放入CROP_QUE了
-            #CROP_QUE.put(cur_img)
-        else:
+        try:
+            ret = crop_face(download_path,save_path)
+            logging.info("img {} finish crop".format(download_path))
+            if ret:
+                cur_img.status = PicInfo.CROP
+                if CROP_QUE.qsize() > max_queue_len:
+                    CROP_QUE.join()
+                logging.info("CROP_QUE put size:%d" % CROP_QUE.qsize())
+                #若把裁减当作最后一步则在此位置就不放入CROP_QUE了
+                #CROP_QUE.put(cur_img)
+            else:
+                cur_img.status = PicInfo.ERROR
+        except:
             cur_img.status = PicInfo.ERROR
         update_sql(cur_img,conn,lock["sql"])
         DOWNLOAD_QUE.task_done()
@@ -83,6 +90,7 @@ def mkdirpath(path):
             os.makedirs("/".join(buf[:i+1]))
 
 def crop_face(download_path,save_path,face_rate=0.7):
+    logging.info("img {} start crop xxxxxxxx".format(download_path))
     img = cv2.imread(download_path)
     face_box = check_face_info(img)
     if face_box is None:
