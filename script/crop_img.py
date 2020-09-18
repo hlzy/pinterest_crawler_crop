@@ -11,6 +11,14 @@ from update_sql import update_sql
 import cv2
 from mtcnn.mtcnn import MTCNN
 import math
+from config import conf
+
+
+IF_INIT  =  conf["IF_INIT"]
+IF_CRAW  = conf["IF_CRAW"]
+IF_DOWNLOAD  =conf["IF_DOWNLOAD"]
+IF_CROP = conf["IF_CROP"]
+IF_UPLOAD  =conf["IF_UPLOAD"]
 
 max_queue_len = 100
 min_confidece = 0.85
@@ -73,7 +81,8 @@ def crop_img(DOWNLOAD_QUE,CROP_QUE,lock,face_ratio,process_number_dict):
                     CROP_QUE.join()
                 logging.info("CROP_QUE put size:%d" % CROP_QUE.qsize())
                 #若把裁减当作最后一步则在此位置就不放入CROP_QUE了
-                #CROP_QUE.put(cur_img)
+                if IF_UPLOAD:
+                    CROP_QUE.put(cur_img)
             else:
                 cur_img.status = PicInfo.ERROR
         except:

@@ -8,6 +8,15 @@ import logging
 import time
 import sqlite3
 from update_sql import update_sql
+from config import conf
+
+IF_INIT  =  conf["IF_INIT"]
+IF_CRAW  = conf["IF_CRAW"]
+IF_DOWNLOAD  =conf["IF_DOWNLOAD"]
+IF_CROP = conf["IF_CROP"]
+IF_UPLOAD  =conf["IF_UPLOAD"]
+
+
 URL_HEADERS = { 
         'Content-Type': 'application/json;charset=utf-8'
 }
@@ -57,7 +66,8 @@ def download_img(INIT_QUE,DOWNLOAD_QUE,lock,process_number_dict):
                     cur_img.status = PicInfo.DOWNLOAD
                     if DOWNLOAD_QUE.qsize() > max_queue_len:
                         DOWNLOAD_QUE.join()
-                    DOWNLOAD_QUE.put(cur_img)
+                    if IF_CROP:
+                        DOWNLOAD_QUE.put(cur_img)
                     logging.info("DOWNLOAD_QUE put size:%d" % DOWNLOAD_QUE.qsize())
         except Exception as e:
             logging.error(e)

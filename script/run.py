@@ -1,3 +1,4 @@
+#控制是否执行每个步骤
 from  multiprocessing import JoinableQueue,Process,Lock,Manager,Pool
 from pic_info import PicInfo
 from link_craw import get_link
@@ -7,23 +8,30 @@ import os
 import sqlite3
 import time
 import logging
+from config import conf
+
+
+IF_INIT  =  conf["IF_INIT"]
+IF_CRAW  = conf["IF_CRAW"]
+IF_DOWNLOAD  =conf["IF_DOWNLOAD"]
+IF_CROP = conf["IF_CROP"]
+IF_UPLOAD  =conf["IF_UPLOAD"]
+IF_SKIP = conf["IF_SKIP"]
+
 
 #设置日志级别
 logging.basicConfig(level=logging.INFO)
-main_word=["pretty face"]
-countrys = "Indonesia Egypt Brazil Vietnam Thailand United States Pakistan Bangladesh Ukraine United Kingdom Russian Federation Kazakhstan Canada Malaysia Nepal Turkey Uzbekistan Germany Kyrgyzstan Armenia Jordan Belarus Algeria Morocco Netherlands France Yemen Georgia".split()
+main_word=["pretty face","preety woman"]
+#main_word=["bikini"]
+#countrys = "Indonesia Egypt Brazil Vietnam Thailand United States Pakistan Bangladesh Ukraine United Kingdom Russian Federation Kazakhstan Canada Malaysia Nepal Turkey Uzbekistan Germany Kyrgyzstan Armenia Jordan Belarus Algeria Morocco Netherlands France Yemen Georgia".split()
+#countrys = "India,Indonesia,Vietnam,Thailand,Middle East,Brazil".split(",")
+countrys = "pakistan".split(",")
 
 
-max_number = 30
+max_number = 500
 #max_process_num = len(main_word) * len(countrys)
 max_process_num = 4
 
-#控制是否执行每个步骤
-IF_INIT = True
-IF_CRAW = True
-IF_DOWNLOAD = True
-IF_CROP = True
-IF_UPLOAD = False
 
 def get_id():
     conn = sqlite3.connect("picinfo.db") 
@@ -72,13 +80,13 @@ def init_que(INIT_QUE,DOWNLOAD_QUE,CROP_QUE,UPLOAD_QUE):
                 ,height=db_img_info[5]
                 ,width=db_img_info[6]
                 )
-        if cur_img.status == PicInfo.INIT:
+        if cur_img.status == PicInfo.INIT and IF_SKIP:
             logging.info("INIT_QUE put size:%d" % INIT_QUE.qsize())
             INIT_QUE.put(cur_img)
-        elif cur_img.status == PicInfo.DOWNLOAD:
+        elif cur_img.status == PicInfo.DOWNLOAD and IF_SKIP:
             logging.info("DOWNLOAD_QUE put size:%d" % DOWNLOAD_QUE.qsize())
             DOWNLOAD_QUE.put(cur_img)
-        elif cur_img.status == PicInfo.CROP:
+        elif cur_img.status == PicInfo.CROP and IF_SKIP:
             logging.info("CROP_QUE put size:%d" % CROP_QUE.qsize())
             CROP_QUE.put(cur_img)
 

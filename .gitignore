@@ -3,4 +3,4 @@
 imgs
 *.db
 crop_imgs
-imgs
+imgs*
