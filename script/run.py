@@ -22,13 +22,14 @@ IF_SKIP = conf["IF_SKIP"]
 #设置日志级别
 logging.basicConfig(level=logging.INFO)
 main_word=["pretty face","preety woman"]
+main_word=["normal girl face","normal girl face","beauty girl","beauty pictures","beauty woman","pretty girl","pretty woman","girl face","girl face"]
 #main_word=["bikini"]
 #countrys = "Indonesia Egypt Brazil Vietnam Thailand United States Pakistan Bangladesh Ukraine United Kingdom Russian Federation Kazakhstan Canada Malaysia Nepal Turkey Uzbekistan Germany Kyrgyzstan Armenia Jordan Belarus Algeria Morocco Netherlands France Yemen Georgia".split()
 #countrys = "India,Indonesia,Vietnam,Thailand,Middle East,Brazil".split(",")
-countrys = "pakistan".split(",")
+countrys = "india,pakistan".split(",")
 
 
-max_number = 500
+max_number = 1000
 #max_process_num = len(main_word) * len(countrys)
 max_process_num = 4
 

@@ -4,3 +4,5 @@ imgs
 *.db
 crop_imgs
 imgs*
+*.jpg
+*.tar.gz
